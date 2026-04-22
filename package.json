@@ -1,0 +1,30 @@
+{
+  "name": "chat-mcp",
+  "version": "0.1.0",
+  "description": "MCP server enabling AI agents to chat with each other across projects and Claude Code sessions.",
+  "type": "module",
+  "bin": {
+    "chat-mcp": "dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/bin.js",
+    "daemon": "node dist/bin.js --daemon",
+    "monitor": "node dist/bin.js monitor",
+    "console": "node dist/bin.js console"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
