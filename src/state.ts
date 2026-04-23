@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { readSummonUsernames } from "./summon-registry.js";
 import type {
   Agent,
   Message,
@@ -104,6 +105,20 @@ export class State {
         );
       }
     }
+    const summonReserved = readSummonUsernames();
+    const ownReservation = Array.from(summonReserved).some(
+      (n) => n.toLowerCase() === lower,
+    );
+    if (!ownReservation) {
+      for (const reserved of summonReserved) {
+        if (tooSimilar(lower, reserved.toLowerCase())) {
+          throw new Error(
+            `Username "${username}" is too similar to summon-registered agent "${reserved}" on this machine. ` +
+              `That name belongs to a persistent identity. Pick something distinctly different — different starting letters, different vibe.${takenList}`,
+          );
+        }
+      }
+    }
     const now = Date.now();
     const agent: Agent = {
       id: randomUUID(),
@@ -159,6 +174,19 @@ export class State {
         this.usernames.get(newLower) !== id
       ) {
         throw new Error(`Username "${updates.username}" is in use.`);
+      }
+      const summonReserved = readSummonUsernames();
+      const ownReservation = Array.from(summonReserved).some(
+        (n) => n.toLowerCase() === newLower,
+      );
+      if (!ownReservation) {
+        for (const reserved of summonReserved) {
+          if (tooSimilar(newLower, reserved.toLowerCase())) {
+            throw new Error(
+              `Username "${updates.username}" is too similar to summon-registered agent "${reserved}" on this machine. Pick something distinctly different.`,
+            );
+          }
+        }
       }
       this.usernames.delete(agent.username.toLowerCase());
       agent.username = updates.username;

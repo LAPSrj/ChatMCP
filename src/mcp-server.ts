@@ -121,6 +121,7 @@ export async function runMcpServer(): Promise<void> {
           project?: string;
           channels_enabled?: boolean;
           note?: string;
+          project_note?: string;
         };
         if (d.agent_id && d.username && d.project) {
           writeSessionFile({
@@ -148,6 +149,10 @@ export async function runMcpServer(): Promise<void> {
             "Only fall back to Bash+re-spawn if the Monitor call itself errors (e.g., Monitor tool not available on Bedrock/Vertex/Foundry or telemetry disabled):\n" +
             `  Bash(command: "${binCmd} fetch --wait 60 --agent-id ${aid}", run_in_background: true)  — re-spawn after each completion.\n\n` +
             "Default delivery mode is `all`. To reduce noise later, call `set_mode({ mode: \"quiet\" | \"project\" | \"dm\" })` — Q/P/D tags you'll see beside peers in list_agents. Call with mode:\"all\" to go back. Don't rely on check_messages for ongoing awareness.";
+        }
+        if (d.project_note) {
+          d.note = `${d.project_note}\n\n${d.note}`;
+          delete d.project_note;
         }
       }
       if (name === "logout") {

@@ -17,7 +17,7 @@ export function makeTools(binCmd: string): readonly {
 }
 
 const LOGIN_DESCRIPTION =
-  "Join the chat room. INVENT your own fun, short, human-sounding username — do not copy names from any examples you've seen or any agent that's currently connected. The server rejects usernames that share a 3–4 character prefix with anyone connected; if your first pick collides, pick something with a DIFFERENT starting letter AND different vibe (don't just swap digits). Never use your agent id or model name. Any whimsical coinage is fine as long as it's yours.";
+  "Join the chat room. INVENT your own fun, short, human-sounding username — do not copy names from any examples you've seen or any agent that's currently connected. The server rejects usernames that share a 3–4 character prefix with anyone connected OR with any summon-mcp registered identity on this machine (persistent agents). If your first pick collides, pick something with a DIFFERENT starting letter AND different vibe (don't just swap digits). Never use your agent id or model name. Any whimsical coinage is fine as long as it's yours.";
 
 const LOGIN_INPUT_SCHEMA = {
   type: "object",
@@ -31,7 +31,7 @@ const LOGIN_INPUT_SCHEMA = {
     project: {
       type: "string",
       description:
-        "Short code for what you're working on (e.g. 'chat-mcp', 'acme-billing', 'homework').",
+        "Short code for what you're working on (e.g. 'chat-mcp', 'acme-billing', 'homework'). Use the CANONICAL code — do not append block/role/scope suffixes like '-footer', '-ops', '-auth'. Each distinct string is a separate project scope, so suffixed codes silo you from peers working on the same project. The block or role belongs in your status line, not the project code.",
     },
     status: {
       type: "string",

@@ -250,6 +250,9 @@ function login(
       `Already logged in as "${a?.username}". Call logout first if you want to change identity.`,
     );
   }
+  const existingProjects = new Set(
+    ctx.state.listAgents().map((a) => a.project),
+  );
   const agent = ctx.state.createAgent(
     cmd.username,
     cmd.project,
@@ -272,12 +275,22 @@ function login(
     },
     ctx.onMessageCreated,
   );
+  const canonical: string[] = [];
+  for (const p of existingProjects) {
+    if (p !== agent.project && agent.project.startsWith(p + "-")) {
+      canonical.push(p);
+    }
+  }
+  const project_note = canonical.length
+    ? `Project scope warning: your project "${agent.project}" is a suffixed variant of connected project "${canonical[0]}". If you're working on the same thing as those peers, switch via update_status({ project: "${canonical[0]}" }) so project-scoped messages reach each other. If this really is a separate project (e.g. a shared starter repo vs. a downstream site), ignore this.`
+    : undefined;
   return {
     agent_id: agent.id,
     username: agent.username,
     project: agent.project,
     status: agent.status,
     channels_enabled: agent.supports_channels,
+    ...(project_note ? { project_note } : {}),
   };
 }
 
