@@ -208,8 +208,11 @@ async function runLoop(session: SessionFile, opts: Options): Promise<void> {
     `[chat-mcp] streaming messages for ${username} (project: ${project})${modeTag} — one line per message. Change mode via set_mode.\n`,
   );
 
+  const sysBuf = makeSystemBuffer();
+  process.on("exit", () => flushSystemBuffer(sysBuf));
+
   for (const m of preflight.messages) {
-    await emitMessage(m);
+    await routeMessage(m, sysBuf);
   }
 
   while (!stopping) {
@@ -227,9 +230,103 @@ async function runLoop(session: SessionFile, opts: Options): Promise<void> {
     }
 
     for (const m of result.messages) {
-      await emitMessage(m);
+      await routeMessage(m, sysBuf);
     }
   }
+}
+
+async function routeMessage(m: Message, sysBuf: SystemBuffer): Promise<void> {
+  if (isCoalescable(m)) {
+    bufferSystemEvent(sysBuf, m);
+    return;
+  }
+  // An actionable message arrived — flush any pending digest first so the
+  // recipient sees ambient context above the thing they need to react to.
+  flushSystemBuffer(sysBuf);
+  await emitMessage(m);
+}
+
+// Ambient peer churn — joins/leaves/renames/project moves/status updates —
+// floods the watcher and forces an LLM turn per event. We batch these into a
+// single "[chat-mcp:silent]" digest line every SYSTEM_DIGEST_MS so the agent
+// can no-op on them. Admin broadcasts, keepalives, and real peer messages are
+// never coalesced — they keep their immediate, distinct framing.
+const COALESCABLE_KINDS = new Set([
+  "join",
+  "leave",
+  "rename",
+  "project_change",
+  "status",
+]);
+const SYSTEM_DIGEST_MS = 30_000;
+
+interface SystemBuffer {
+  events: Message[];
+  timer: NodeJS.Timeout | null;
+}
+
+function makeSystemBuffer(): SystemBuffer {
+  return { events: [], timer: null };
+}
+
+function isCoalescable(m: Message): boolean {
+  if (!m.system) return false;
+  if (m.from === "admin") return false;
+  if (!m.system_kind) return false;
+  return COALESCABLE_KINDS.has(m.system_kind);
+}
+
+function bufferSystemEvent(buf: SystemBuffer, m: Message): void {
+  buf.events.push(m);
+  if (!buf.timer) {
+    buf.timer = setTimeout(() => {
+      buf.timer = null;
+      flushSystemBuffer(buf);
+    }, SYSTEM_DIGEST_MS);
+    // The digest timer should not pin the loop alive after SIGTERM/SIGINT;
+    // exit handler will flush whatever's pending.
+    buf.timer.unref?.();
+  }
+}
+
+function flushSystemBuffer(buf: SystemBuffer): void {
+  if (buf.timer) {
+    clearTimeout(buf.timer);
+    buf.timer = null;
+  }
+  if (buf.events.length === 0) return;
+  const events = buf.events;
+  buf.events = [];
+
+  const byKind = new Map<string, number>();
+  const byProject = new Map<string, number>();
+  const actors = new Map<string, Set<string>>();
+  for (const m of events) {
+    const kind = m.system_kind ?? "system";
+    byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
+    const proj = m.from_project || "?";
+    byProject.set(proj, (byProject.get(proj) ?? 0) + 1);
+    if (m.system_actor) {
+      if (!actors.has(kind)) actors.set(kind, new Set());
+      actors.get(kind)!.add(m.system_actor);
+    }
+  }
+  const kindParts = Array.from(byKind.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => {
+      const who = actors.get(k);
+      const sample = who && who.size <= 3
+        ? ` (${Array.from(who).join(", ")})`
+        : "";
+      return `${n}× ${k}${sample}`;
+    });
+  const projParts = Array.from(byProject.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([p, n]) => `${p}×${n}`);
+  const when = new Date().toLocaleTimeString("en-GB");
+  process.stdout.write(
+    `[chat-mcp:silent] ${when} ${events.length} ambient event${events.length === 1 ? "" : "s"} — ${kindParts.join(", ")} | projects: ${projParts.join(", ")}. check_messages for detail.\n`,
+  );
 }
 
 // Monitor batches stdout lines emitted within ~200ms into a single notification

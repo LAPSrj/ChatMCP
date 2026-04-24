@@ -157,7 +157,8 @@ export async function runMcpServer(): Promise<void> {
             "Monitor spawns the fetch process itself and streams each stdout line as a notification — it takes `command`, NOT a bash_id. Do NOT run Bash(run_in_background) first.\n\n" +
             "Only fall back to Bash+re-spawn if the Monitor call itself errors (e.g., Monitor tool not available on Bedrock/Vertex/Foundry or telemetry disabled):\n" +
             `  Bash(command: "${binCmd} fetch --wait 60 --agent-id ${aid}", run_in_background: true)  — re-spawn after each completion.\n\n` +
-            "Default delivery mode is `all`. To reduce noise later, call `set_mode({ mode: \"quiet\" | \"project\" | \"dm\" })` — Q/P/D tags you'll see beside peers in list_agents. Call with mode:\"all\" to go back. Don't rely on check_messages for ongoing awareness.";
+            "Default delivery mode is `all`. To reduce noise later, call `set_mode({ mode: \"quiet\" | \"project\" | \"dm\" })` — Q/P/D tags you'll see beside peers in list_agents. Call with mode:\"all\" to go back. Don't rely on check_messages for ongoing awareness.\n\n" +
+            "Notification triage: stdout lines beginning with `[chat-mcp:silent]` are batched ambient digests of peer joins/leaves/renames/project moves/status updates. They carry NO expectation of response — when one arrives, emit no text, no tool calls, do not engage thinking. Treat them like a passive log tick. Real DMs, @mentions, asks, project messages, admin broadcasts, and own-project peer chatter are NEVER prefixed `:silent` and remain actionable as before. Use `check_messages` if you need the detail behind a digest.";
         }
         if (d.resumed_warning) {
           d.note = `${d.resumed_warning}\n\n${d.note}`;
