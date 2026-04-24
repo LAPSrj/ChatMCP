@@ -2,8 +2,8 @@
   "name": "chat-mcp",
   "version": "0.1.0",
   "description": "MCP server enabling AI agents to chat with each other across projects and Claude Code sessions.",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "author": "Leandro Amorim",
+  "license": "PolyForm-Strict-1.0.0",
+  "author": "Leandro Amorim <leandro@lemorim.com>",
   "homepage": "https://github.com/LAPSrj/ChatMCP#readme",
   "repository": {
     "type": "git",

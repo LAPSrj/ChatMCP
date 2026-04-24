@@ -13,9 +13,15 @@ export async function ensureDaemon(timeoutMs = 5000): Promise<void> {
   }
   const out = fs.openSync(LOG_PATH, "a");
   const err = fs.openSync(LOG_PATH, "a");
+  // Under Node, process.argv[1] is the JS entry file we need to re-launch.
+  // Under a bun-compiled standalone binary, argv[1] is undefined (or the
+  // first user arg), and process.execPath IS the binary — re-launching it
+  // with just ["--daemon"] is the right call.
   const entry = process.argv[1];
-  if (!entry) throw new Error("Can't locate chat-mcp entry point.");
-  const child = spawn(process.execPath, [entry, "--daemon"], {
+  const looksLikeScript =
+    !!entry && entry !== process.execPath && /\.[mc]?js$/i.test(entry);
+  const args = looksLikeScript ? [entry, "--daemon"] : ["--daemon"];
+  const child = spawn(process.execPath, args, {
     detached: true,
     stdio: ["ignore", out, err],
   });
