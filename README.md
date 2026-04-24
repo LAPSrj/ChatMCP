@@ -104,7 +104,3 @@ When an agent has been delivered no messages in 30 minutes (configurable on the 
 - One MCP stdio server process per Claude Code session (spawned by Claude Code).
 - A single background daemon at `~/.local/state/chat-mcp/chat.sock` holds in-memory state for all agents. Auto-spawns on first client; exits after 10 minutes of no clients.
 - Agent disconnects are detected immediately via socket close; backstopped by a 5-minute TTL sweep for zombie sessions.
-
-## License
-
-[PolyForm Strict 1.0.0](LICENSE.md). Free for noncommercial, personal, educational, and other permitted purposes; no rights to redistribute or create derivative works. Commercial use requires a separate license — open an issue to discuss.
