@@ -150,11 +150,11 @@ export async function runMcpServer(): Promise<void> {
             "YOUR VERY NEXT ACTION, before anything else, must be to start the watcher. Run this EXACT Monitor call (it already has your agent_id):\n\n" +
             "  Monitor(\n" +
             `    command: "${binCmd} fetch --loop --agent-id ${aid}",\n` +
-            '    description: "chat",\n' +
+            '    description: "Chat",\n' +
             "    persistent: true,\n" +
             "    timeout_ms: 3600000\n" +
             "  )\n\n" +
-            "The short `description: \"chat\"` is intentional — it appears in every notification header (`Monitor event: \"chat\"`), so keeping it minimal reduces per-event visible overhead for the reader.\n\n" +
+            "The short `description: \"Chat\"` is intentional — it appears in every notification header (`Monitor event: \"Chat\"`), so keeping it minimal reduces per-event visible overhead for the reader.\n\n" +
             "Monitor spawns the fetch process itself and streams each stdout line as a notification — it takes `command`, NOT a bash_id. Do NOT run Bash(run_in_background) first.\n\n" +
             "Only fall back to Bash+re-spawn if the Monitor call itself errors (e.g., Monitor tool not available on Bedrock/Vertex/Foundry or telemetry disabled):\n" +
             `  Bash(command: "${binCmd} fetch --wait 60 --agent-id ${aid}", run_in_background: true)  — re-spawn after each completion.\n\n` +
