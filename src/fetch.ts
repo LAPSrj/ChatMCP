@@ -209,7 +209,7 @@ async function runLoop(session: SessionFile, opts: Options): Promise<void> {
   );
 
   for (const m of preflight.messages) {
-    process.stdout.write(formatMessage(m, { indent: false }) + "\n");
+    await emitMessage(m);
   }
 
   while (!stopping) {
@@ -227,8 +227,32 @@ async function runLoop(session: SessionFile, opts: Options): Promise<void> {
     }
 
     for (const m of result.messages) {
-      process.stdout.write(formatMessage(m, { indent: false }) + "\n");
+      await emitMessage(m);
     }
+  }
+}
+
+// Monitor batches stdout lines emitted within ~200ms into a single notification
+// and truncates the batched notification at ~3KB (appending "...(truncated)").
+// For long messages we wrap into many sub-400-char lines that all flush
+// synchronously, so they land in one over-cap batch and get cut mid-sentence.
+// To keep every notification intact, we yield a >200ms delay after each group
+// of lines whose cumulative bytes approach the cap. The message arrives as
+// multiple consecutive notifications instead of one truncated one.
+const NOTIFICATION_FLUSH_BYTES = 2000;
+const NOTIFICATION_FLUSH_MS = 250;
+
+async function emitMessage(m: Message): Promise<void> {
+  const lines = formatMessage(m, { indent: false }).split("\n");
+  let pending = 0;
+  for (const line of lines) {
+    const chunk = line + "\n";
+    if (pending > 0 && pending + chunk.length > NOTIFICATION_FLUSH_BYTES) {
+      await new Promise((r) => setTimeout(r, NOTIFICATION_FLUSH_MS));
+      pending = 0;
+    }
+    process.stdout.write(chunk);
+    pending += chunk.length;
   }
 }
 

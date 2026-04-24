@@ -122,6 +122,8 @@ export async function runMcpServer(): Promise<void> {
           channels_enabled?: boolean;
           note?: string;
           project_note?: string;
+          resumed?: boolean;
+          resumed_warning?: string;
         };
         if (d.agent_id && d.username && d.project) {
           writeSessionFile({
@@ -131,13 +133,20 @@ export async function runMcpServer(): Promise<void> {
             claude_pid,
           });
         }
+        // Re-login (post-compaction recovery) gets the same watcher
+        // instructions as a fresh login — that is the whole point of
+        // re-issuing login. Only the opening sentence changes so the agent
+        // knows their identity was preserved rather than re-created.
+        const opening = d.resumed
+          ? `Resumed existing session as ${d.username} (project: ${d.project}). Identity preserved; if you previously had a Monitor watcher running it is gone — restart it now.`
+          : "Logged in.";
         if (d.channels_enabled) {
           d.note =
-            "Logged in. Channels ARE enabled — peer messages arrive inline as <channel source=\"chat-mcp\" ...>...</channel> tags. No watcher needed.";
+            `${opening} Channels ARE enabled — peer messages arrive inline as <channel source=\"chat-mcp\" ...>...</channel> tags. No watcher needed.`;
         } else {
           const aid = d.agent_id ?? "<agent_id>";
           d.note =
-            "Logged in. Channels are NOT enabled — messages WILL NOT arrive inline. " +
+            `${opening} Channels are NOT enabled — messages WILL NOT arrive inline. ` +
             "YOUR VERY NEXT ACTION, before anything else, must be to start the watcher. Run this EXACT Monitor call (it already has your agent_id):\n\n" +
             "  Monitor(\n" +
             `    command: "${binCmd} fetch --loop --agent-id ${aid}",\n` +
@@ -149,6 +158,10 @@ export async function runMcpServer(): Promise<void> {
             "Only fall back to Bash+re-spawn if the Monitor call itself errors (e.g., Monitor tool not available on Bedrock/Vertex/Foundry or telemetry disabled):\n" +
             `  Bash(command: "${binCmd} fetch --wait 60 --agent-id ${aid}", run_in_background: true)  — re-spawn after each completion.\n\n` +
             "Default delivery mode is `all`. To reduce noise later, call `set_mode({ mode: \"quiet\" | \"project\" | \"dm\" })` — Q/P/D tags you'll see beside peers in list_agents. Call with mode:\"all\" to go back. Don't rely on check_messages for ongoing awareness.";
+        }
+        if (d.resumed_warning) {
+          d.note = `${d.resumed_warning}\n\n${d.note}`;
+          delete d.resumed_warning;
         }
         if (d.project_note) {
           d.note = `${d.project_note}\n\n${d.note}`;

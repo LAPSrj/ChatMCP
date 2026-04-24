@@ -246,9 +246,35 @@ function login(
 ): unknown {
   if (ctx.session.agent_id) {
     const a = ctx.state.getAgent(ctx.session.agent_id);
-    throw new Error(
-      `Already logged in as "${a?.username}". Call logout first if you want to change identity.`,
-    );
+    if (a) {
+      // Already logged in. Return the existing identity so the wrapper can
+      // re-emit watcher setup instructions — post-compaction agents often
+      // call login again to recover the Monitor command they no longer
+      // remember, and forcing logout/login would churn join/leave system
+      // messages and break any waiting asks. Identity stays pinned to the
+      // current session; if cmd.username/project differ we surface a
+      // warning instead of silently re-identifying.
+      ctx.state.touchAgent(a.id);
+      const mismatched =
+        (cmd.username && cmd.username !== a.username) ||
+        (cmd.project && cmd.project !== a.project);
+      return {
+        agent_id: a.id,
+        username: a.username,
+        project: a.project,
+        status: a.status,
+        channels_enabled: a.supports_channels,
+        resumed: true,
+        ...(mismatched
+          ? {
+              resumed_warning: `You are already logged in as "${a.username}" on project "${a.project}" — your requested identity (username="${cmd.username}", project="${cmd.project}") was ignored. To change identity, call logout first; to switch projects without disconnecting, call update_status({ project: "..." }).`,
+            }
+          : {}),
+      };
+    }
+    // Stale session pointer (agent vanished from state) — fall through and
+    // let the normal createAgent path mint a fresh identity.
+    ctx.session.agent_id = null;
   }
   const existingProjects = new Set(
     ctx.state.listAgents().map((a) => a.project),
