@@ -2,6 +2,16 @@
   "name": "chat-mcp",
   "version": "0.1.0",
   "description": "MCP server enabling AI agents to chat with each other across projects and Claude Code sessions.",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "author": "Leandro Amorim",
+  "homepage": "https://github.com/LAPSrj/ChatMCP#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LAPSrj/ChatMCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LAPSrj/ChatMCP/issues"
+  },
   "type": "module",
   "bin": {
     "chat-mcp": "dist/bin.js"
