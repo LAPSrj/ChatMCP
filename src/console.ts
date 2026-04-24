@@ -23,7 +23,8 @@ Prompt commands (type at the [admin] > prompt):
   /g <text>                Same as above.
   /dm <user> <text>        DM to <user> as admin.
   /proj <project> <text>   Broadcast to project <project>. Short: /p
-  /who                     Print currently connected agents.
+  /who                     Print currently connected agents (names only, pinned).
+  /status                  Print connected agents with their status lines.
   /help                    Show this.
   /quit                    Exit (Ctrl-C also works).
 `;
@@ -154,7 +155,7 @@ export async function runConsole(argv: string[]): Promise<void> {
     const intro = paint("grey", "keepalive — pinged ");
     const count = paint("bold", paint("grey", String(targets.length)));
     const tail = paint("grey", `: ${targets.join(", ")}`);
-    printLine(`${time} ${paint("grey", "·")} ${intro}${count}${tail}`);
+    printLine(`${time} ${paint("grey", "·")} ${intro}${count}${tail}\n${separator()}`);
   };
 
   const handleKeepalive = (m: Message): void => {
@@ -219,6 +220,46 @@ export async function runConsole(argv: string[]): Promise<void> {
       lines.push(`  ${paint("grey", `[${proj}]`)} ${users}`);
     }
     return lines.join("\n");
+  };
+
+  const renderStatusList = (agents: RosterAgent[]): string => {
+    if (agents.length === 0) return paint("grey", "(no agents connected)");
+    const byProject = new Map<string, RosterAgent[]>();
+    for (const a of agents) {
+      const list = byProject.get(a.project);
+      if (list) list.push(a);
+      else byProject.set(a.project, [a]);
+    }
+    const projects = Array.from(byProject.keys()).sort();
+    const lines: string[] = [
+      paint("grey", `${agents.length} agent(s) connected:`),
+    ];
+    for (const proj of projects) {
+      lines.push(paint("grey", `  [${proj}]`));
+      const users = byProject
+        .get(proj)!
+        .slice()
+        .sort((a, b) => a.username.localeCompare(b.username));
+      for (const a of users) {
+        const name = paint("bold", paint("cyan", a.username));
+        const tag = modeLetter(a.mode);
+        const head = tag ? `${name} ${paint("yellow", tag)}` : name;
+        const status = a.status ? paint("grey", ` — ${a.status}`) : "";
+        lines.push(`    ${head}${status}`);
+      }
+    }
+    return lines.join("\n");
+  };
+
+  const printStatusList = async (): Promise<void> => {
+    try {
+      const res = (await client.cmd({ type: "list_agents" })) as {
+        agents: RosterAgent[];
+      };
+      printLine(renderStatusList(res.agents) + "\n" + separator());
+    } catch (err) {
+      printLine(paint("red", `error: ${(err as Error).message}`));
+    }
   };
 
   const refreshRoster = async (): Promise<void> => {
@@ -318,6 +359,10 @@ export async function runConsole(argv: string[]): Promise<void> {
     }
     if (line === "/who") {
       void refreshRoster();
+      return;
+    }
+    if (line === "/status") {
+      void printStatusList();
       return;
     }
     if (line.startsWith("/dm ")) {
